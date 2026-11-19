@@ -1,33 +1,36 @@
-#
+
 # Script Runner
 
 Script Runner is an OpenCreator plugin that automatically executes user scripts at startup in both SoC and Tunneled modes.
 
 ## Directory structure
 
-Scripts are stored in:
+All scripts are stored in a single directory:
 
 ```text
 /usr/data/opencreator/scripts/
-+-- both/       # Executed in both modes
-+-- soc/        # Executed only in SoC mode
-+-- tunneled/   # Executed only in Tunneled mode
+├── backup.sh
+├── monitor.py
+├── fan-control.py
+└── my-script.sh
 ```
 
-All three directories are created automatically when the runner starts.
+The directory is created automatically when the runner starts.
 
-## Execution order
+## Execution
 
-The runner starts scripts in this order:
+The runner executes scripts in the following order:
 
-1. All `*.sh` files in `both/`, alphabetically.
-2. All `*.py` files in `both/`, alphabetically.
-3. All `*.sh` files in the active mode directory, alphabetically.
-4. All `*.py` files in the active mode directory, alphabetically.
+1. All `*.sh` files, alphabetically.
+2. All `*.py` files, alphabetically.
 
-Scripts are started in the background. The runner starts the next group without waiting for scripts in the previous group to finish.
+All scripts are started in the background. The runner does not wait for one script to finish before starting the next.
 
-Each script runs with its working directory set to its own folder.
+Each script runs with its working directory set to:
+
+```text
+/usr/data/opencreator/scripts/
+```
 
 - Shell scripts are executed using `sh`.
 - Python scripts are executed using the selected Python interpreter.
@@ -40,22 +43,39 @@ The preferred Python interpreter is:
 
 If it is unavailable or not executable, the runner tries `python3` and then `python` from the system `PATH`.
 
-## Operating mode detection
+## Operating mode
 
-The runner uses `OC_TUNNELED` provided by OpenCreator when the variable is present:
+Scripts can detect the current operating mode using environment variables provided by the runner.
 
-- `OC_TUNNELED=1`: Tunneled mode.
-- Any other value, including an empty value: SoC mode.
+| Variable | Description |
+|---|---|
+| `OC_TUNNELED` | `1` in Tunneled mode; otherwise SoC mode |
+| `OC_RUNNER_MODE` | `tunneled` or `soc` |
 
-If `OC_TUNNELED` is not defined, the runner falls back to checking whether this file is executable:
+Example in Python:
 
-```text
-/usr/data/opencreator/tunneled/tunneled.sh
+```python
+import os
+
+if os.environ.get("OC_TUNNELED") == "1":
+    print("Running in Tunneled mode")
+else:
+    print("Running in SoC mode")
+```
+
+Example in Shell:
+
+```sh
+if [ "${OC_TUNNELED:-0}" = "1" ]; then
+    echo "Running in Tunneled mode"
+else
+    echo "Running in SoC mode"
+fi
 ```
 
 ## Environment variables
 
-Scripts inherit the environment provided by OpenCreator, including variables such as:
+Scripts inherit the environment provided by OpenCreator, including:
 
 - `OC_TUNNELED`
 - `OC_MOONRAKER_URL`
@@ -71,7 +91,7 @@ The runner additionally exports:
 | `OC_MOONRAKER_PORT` | Moonraker port |
 | `PYTHONUNBUFFERED` | Set to `1` for unbuffered Python output |
 
-In Tunneled mode, the runner uses the Moonraker URL supplied by OpenCreator. If unavailable, it attempts discovery through `oc-plugin moonraker --find`, then falls back to the cached URL.
+In Tunneled mode, the runner uses the Moonraker URL provided by OpenCreator. If unavailable, it attempts discovery through `oc-plugin moonraker --find`, then falls back to the cached URL.
 
 In SoC mode, the default Moonraker URL is:
 
@@ -89,7 +109,11 @@ oc-plugin install /usr/data/oc-script-runner
 
 ## Usage
 
-Place scripts in the appropriate directory.
+Place your scripts in:
+
+```text
+/usr/data/opencreator/scripts/
+```
 
 To restart the runner after adding or modifying scripts:
 
@@ -105,25 +129,24 @@ oc-plugin logs script-runner runner
 
 ## Logging
 
-The runner uses exactly four log files, all stored directly in `/tmp`:
+The runner uses a single log file:
 
 ```text
 /tmp/oc-script-runner.log
-/tmp/oc-script-runner-both.log
-/tmp/oc-script-runner-soc.log
-/tmp/oc-script-runner-tunneled.log
 ```
 
-| Log file | Contents |
-|---|---|
-| `oc-script-runner.log` | Startup information, detected mode, Moonraker configuration and process status |
-| `oc-script-runner-both.log` | Output from scripts in `both/` |
-| `oc-script-runner-soc.log` | Output from scripts in `soc/` |
-| `oc-script-runner-tunneled.log` | Output from scripts in `tunneled/` |
+It contains:
 
-Each mode-specific log includes script output, start notifications and exit status.
+- Startup information and detected operating mode.
+- Moonraker configuration.
+- Python interpreter selection.
+- Script start notifications.
+- Standard output and standard error from all scripts.
+- Script exit status.
 
-All four log files are overwritten whenever the runner starts. Since they are stored in `/tmp`, they reside in RAM and are not intended for persistent logging.
+The log is overwritten whenever the runner starts.
+
+Since it is stored in `/tmp`, it resides in RAM and is not intended for persistent logging.
 
 ## Process management
 
@@ -135,7 +158,6 @@ Processes that deliberately detach themselves from the managed process group (fo
 
 ## Notes
 
-- Scripts need to be readable by the user running the plugin. They do not need executable permissions because they are launched through `sh` or Python.
-- The script directories must remain accessible to the plugin process.
-- If `OC_TUNNELED` is not defined, the fallback mode detection requires `/usr/data/opencreator/tunneled/tunneled.sh` to be executable.
+- Scripts must be readable by the user running the plugin.
+- Scripts do not need executable permissions because they are launched through `sh` or Python.
 - Use LF line endings for shell scripts. CRLF line endings may cause execution errors.
