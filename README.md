@@ -1,22 +1,17 @@
 
-# Script Runner
+Script directory
 
-Script Runner is an OpenCreator plugin that automatically executes user scripts at startup in both SoC and Tunneled modes.
+All user scripts are stored in a single directory:
 
-## Directory structure
-
-All scripts are stored in a single directory:
-
-```text
 /usr/data/opencreator/scripts/
 ├── backup.sh
 ├── monitor.py
 ├── fan-control.py
 └── my-script.sh
-```
 
-The directory is created automatically when the runner starts.
+The directory is created automatically by Script Runner.
 
+Scripts are executed in both SoC and Tunneled modes. If a script needs mode-specific behavior, it can check the OC_TUNNELED or OC_RUNNER_MODE environment variable.
 ## Execution
 
 The runner executes scripts in the following order:
