@@ -1,9 +1,8 @@
-
 {
   "id": "script-runner",
   "name": "Script Runner",
-  "version": "1.0.0",
-  "description": "Automatically executes scripts from shared and mode-specific directories at startup in SoC and Tunneled modes.",
+  "version": "1.0.1",
+  "description": "Automatically executes user scripts in SoC and Tunneled modes.",
   "startup": [
     {
       "name": "runner",
