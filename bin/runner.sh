@@ -2,11 +2,7 @@
 #!/opt/bin/sh
 
 BASE="/usr/data/opencreator/scripts"
-
 LOG="/tmp/oc-script-runner.log"
-LOG_BOTH="/tmp/oc-script-runner-both.log"
-LOG_SOC="/tmp/oc-script-runner-soc.log"
-LOG_TUNNELED="/tmp/oc-script-runner-tunneled.log"
 
 PY="/usr/data/python-hf/bin/python3"
 PIDS=""
@@ -19,13 +15,10 @@ log() {
 }
 
 # --------------------------------------------------
-# Initialize logs
+# Initialize log
 # --------------------------------------------------
 
 : > "$LOG"
-: > "$LOG_BOTH"
-: > "$LOG_SOC"
-: > "$LOG_TUNNELED"
 
 # --------------------------------------------------
 # Detect operating mode
@@ -42,11 +35,6 @@ elif [ -x /usr/data/opencreator/tunneled/tunneled.sh ]; then
 else
     MODE="soc"
 fi
-
-case "$MODE" in
-    tunneled) MODE_LOG="$LOG_TUNNELED" ;;
-    soc)      MODE_LOG="$LOG_SOC" ;;
-esac
 
 export OC_RUNNER_MODE="$MODE"
 
@@ -81,23 +69,22 @@ fi
 
 export OC_MOONRAKER_URL
 
-# Extract Moonraker hostname/IP and port.
+# --------------------------------------------------
+# Extract Moonraker hostname/IP and port
+# --------------------------------------------------
+
 OC_MOONRAKER_IP=""
 OC_MOONRAKER_PORT=""
 
 if [ -n "$PY" ]; then
     set -- $("$PY" -c '
 import sys
+from urllib.parse import urlparse
 
 try:
-    from urllib.parse import urlparse
-except ImportError:
-    from urlparse import urlparse
-
-try:
-    url = urlparse(sys.argv[1])
-    print(url.hostname or "")
-    print(url.port or (443 if url.scheme == "https" else 80))
+    u = urlparse(sys.argv[1])
+    print(u.hostname or "")
+    print(u.port or (443 if u.scheme == "https" else 80))
 except Exception:
     print("")
     print("")
@@ -110,13 +97,11 @@ fi
 export OC_MOONRAKER_IP OC_MOONRAKER_PORT
 
 # --------------------------------------------------
-# Start scripts from a directory
+# Run scripts
 # --------------------------------------------------
 
-run_directory() {
+run_scripts() {
     DIR="$1"
-    DIR_NAME="$2"
-    DIR_LOG="$3"
 
     [ -d "$DIR" ] || return 0
 
@@ -125,10 +110,7 @@ run_directory() {
         [ -f "$SCRIPT" ] || continue
 
         (
-            cd "$DIR" || {
-                echo "ERROR: cannot enter $DIR"
-                exit 1
-            }
+            cd "$DIR" || exit 1
 
             echo
             echo "[$(date '+%Y-%m-%d %H:%M:%S')] START $SCRIPT"
@@ -143,11 +125,11 @@ run_directory() {
             fi
 
             exit "$RC"
-        ) >> "$DIR_LOG" 2>&1 &
+        ) >> "$LOG" 2>&1 &
 
         PID=$!
         PIDS="$PIDS $PID"
-        log "Started [$DIR_NAME] $SCRIPT PID=$PID"
+        log "Started $SCRIPT PID=$PID"
     done
 
     # Start Python scripts after shell scripts.
@@ -155,10 +137,7 @@ run_directory() {
         [ -f "$SCRIPT" ] || continue
 
         (
-            cd "$DIR" || {
-                echo "ERROR: cannot enter $DIR"
-                exit 1
-            }
+            cd "$DIR" || exit 1
 
             echo
             echo "[$(date '+%Y-%m-%d %H:%M:%S')] START $SCRIPT"
@@ -178,19 +157,19 @@ run_directory() {
             fi
 
             exit "$RC"
-        ) >> "$DIR_LOG" 2>&1 &
+        ) >> "$LOG" 2>&1 &
 
         PID=$!
         PIDS="$PIDS $PID"
-        log "Started [$DIR_NAME] $SCRIPT PID=$PID"
+        log "Started $SCRIPT PID=$PID"
     done
 }
 
 # --------------------------------------------------
-# Initialize directories and report configuration
+# Initialize and start
 # --------------------------------------------------
 
-mkdir -p "$BASE/both" "$BASE/soc" "$BASE/tunneled"
+mkdir -p "$BASE"
 
 log "=========================================="
 log "Script Runner starting"
@@ -199,14 +178,10 @@ log "Moonraker URL: $OC_MOONRAKER_URL"
 log "Moonraker IP: $OC_MOONRAKER_IP"
 log "Moonraker port: $OC_MOONRAKER_PORT"
 log "Python: ${PY:-NOT FOUND}"
+log "Scripts directory: $BASE"
 log "=========================================="
 
-# Start shared scripts first, then mode-specific scripts.
-# All scripts run in the background; the next directory is
-# started without waiting for the previous scripts to finish.
-
-run_directory "$BASE/both" "both" "$LOG_BOTH"
-run_directory "$BASE/$MODE" "$MODE" "$MODE_LOG"
+run_scripts "$BASE"
 
 log "All scripts launched. Waiting for completion."
 
