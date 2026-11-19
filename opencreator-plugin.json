@@ -9,5 +9,9 @@
       "exec": "bin/runner.sh",
       "type": "service"
     }
-  ]
+  ],
+  "scripts": {
+    "update": "update.sh",
+    "uninstall": "uninstall.sh"
+  }
 }
