@@ -1,7 +1,9 @@
 #!/opt/bin/sh
 
-SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+SCRIPTS_DIR="/usr/data/opencreator/scripts"
 
-PYTHON="/usr/data/python-hf/bin/python3"
+if [ -d "$SCRIPTS_DIR" ]; then
+    find "$SCRIPTS_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+fi
 
-exec "$PYTHON" "$SCRIPT_DIR/runner.py" "$@"
+exit 0

@@ -3,9 +3,11 @@ set -eu
 
 SCRIPTS_DIR="/usr/data/opencreator/scripts"
 
-echo "[Script Runner] Creating scripts directory..."
+echo "[Script Runner] Removing scripts directory..."
 
-mkdir -p "$SCRIPTS_DIR"
+if [ -d "$SCRIPTS_DIR" ]; then
+    rm -rf "$SCRIPTS_DIR"
+fi
 
 echo "[Script Runner] Installation completed."
 
